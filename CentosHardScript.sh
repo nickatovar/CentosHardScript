@@ -1,15 +1,21 @@
+############# CentOS 6 Hardening Script ###########
 
-#Secure Terminal
+####Set-Core-Permissions#####
+
+#Secure the Terminal by removing all non-essential consoles
 mv /etc/securetty /etc/securetty.orig
 echo "tty1" > /etc/securetty 
 
 #Secure root directory and passwd/shadow files
 
 chmod 700 /root
+
 cd /etc
 chown root:root passwd shadow group gshadow
 chmod 644 passwd group
 chmod 400 shadow gshadow
+
+#Set sticky bit on these so only owner can mv/delete
 
 chmod -s /bin/ping6
 chmod -s /usr/libexec/openssh/ssh-keysign
@@ -17,26 +23,29 @@ chmod -s /usr/sbin/usernetctl
 chmod -s /usr/bin/chsh
 chmod -s /usr/bin/chfn
 
+#Modify userhelper so PAM settings can't be modified
 
 chgrp wheel /usr/sbin/userhelper
 chmod 4710 /usr/sbin/userhelper
 
-#Use SHA512 for password hashing 
+#Use SHA512 for password hashing
+
 authconfig --passalgo=sha512 --update
 
-#####Change-Daemon-Permissions#####
+#Change the default mask for all created daemons
 echo umask 027 >> /etc/sysconfig/init
 
-#Reap idle users
+#Add profile timeouts to reap idle users
 echo "Idle users will be removed after 15 minutes" >> /etc/profile.d/os-security.sh
 echo "readonly TMOUT=900" >> /etc/profile.d/os-security.sh
 echo "readonly HISTFILE" >> /etc/profile.d/os-security.sh 
 chmod +x /etc/profile.d/os-security.sh
-
 chown root:root /etc/profile.d/os-security.sh
 chmod 700 /etc/profile.d/os-security.sh
 
-#Pam modifications
+####Login-Security####
+
+#Modify the PAM config
 mv /etc/pam.d/system-auth /etc/pam.d/system-auth.orig
 touch /var/log/tallylog
 
@@ -67,7 +76,7 @@ session     required      pam_unix.so " > /etc/pam.d/system-auth
 chown root:root /etc/pam.d/system-auth
 chmod 600 /etc/pam.d/system-auth
 
-#####Configure-SSH#####
+#Modify SSH config
 
 mv /etc/ssh/sshd_config /etc/ssh/sshd_config.orig
 
@@ -296,12 +305,11 @@ yum groupremove “X Window System”
 
 #####Keep-Software-Up-to-Date#####
 
-##Update-Current Version##
-
 #Get/Check GPG Key
 rpm --import http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-6
 rpm -q --queryformat "%{SUMMARY}\n" gpg-pubkey
 
+#Modify yum config
 mv /etc/yum.conf /etc/yum.conf.orig
 
 echo "[main]
@@ -332,6 +340,8 @@ distroverpkg=centos-release
 
 chown root:root /etc/yum.conf
 chmod 640 /etc/yum.conf
+
+#Check for updates and upgrade
 
 yum check-update
 yum upgrade
