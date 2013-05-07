@@ -80,60 +80,47 @@ chmod 600 /etc/pam.d/system-auth
 
 mv /etc/ssh/sshd_config /etc/ssh/sshd_config.orig
 
-echo "# This is the sshd server system-wide configuration file.  See
-# sshd_config(5) for more information.
+echo "#This is the sshd server system-wide configuration file. See sshd_config(5) for more information.
 
-# This sshd was compiled with PATH=/usr/local/bin:/bin:/usr/bin
-
-# The strategy used for options in the default sshd_config shipped with
-# OpenSSH is to specify options with their default value where
-# possible, but leave them commented.  Uncommented options change a
-# default value.
-
+#The default port is 22, change the port number below to help secure the server
 Port 2200
-#AddressFamily any
-#ListenAddress 0.0.0.0
-#ListenAddress ::
 
-# Disable legacy (protocol version 1) support in the server for new
-# installations. In future the default will change to require explicit
-# activation of protocol 1
+#Disable legacy (protocol version 1) support.
 Protocol 2
 
-
-# Lifetime and size of ephemeral version 1 server key
+#SSH key size and cipher type
 ServerKeyBits 2048
 Ciphers aes128-ctr,aes192-ctr,aes256-ctr
 
-# Logging
+##Logging settings##
+#logging level and syslog category
+LogLevel INFO
 SyslogFacility AUTHPRIV
 
-# Authentication:
+##AuthenticationSettings##
+PasswordAuthentication yes
+UsePrivilegeSeparation yes
+PermitEmptyPasswords no
+PermitUserEnvironment no
+ChallengeResponseAuthentication no
+PermitRootLogin no
 LoginGraceTime 2m
-StrictModes yes
 MaxAuthTries 5
 MaxSessions 1
+StrictModes yes
 UsePAM yes
-PermitRootLogin no
-AllowGroups ssh
 HostbasedAuthentication no
-UsePrivilegeSeparation yes
 AllowTcpForwarding no
-LogLevel INFO
 IgnoreRhosts yes
-PermitUserEnvironment no
+
+#Change this to a group on your system that you want to have ssh access
+#Or use AllowUsers, DenyUsers, DenyGroups for other options
+AllowGroups ssh
 
 #SSH Session Keep-Alive
 TCPKeepAlive Yes
 ClientAliveInterval 300
 ClientAliveCountMax 0
-
-# To disable tunneled clear text passwords, change to no here!
-PasswordAuthentication yes
-PermitEmptyPasswords no
-
-# Change to no to disable s/key passwords
-ChallengeResponseAuthentication no
 
 # Accept locale-related environment variables
 AcceptEnv LANG LC_CTYPE LC_NUMERIC LC_TIME LC_COLLATE LC_MONETARY LC_MESSAGES
@@ -144,10 +131,10 @@ AcceptEnv XMODIFIERS
 #X11
 X11Forwarding no
 
-# no default banner path
-#Banner none
+#Set a banner file to let users know they are on the right system
+Banner /etc/motd
 
-# override default of no subsystems
+#Allow for sftp
 Subsystem	sftp	/usr/libexec/openssh/sftp-server" > /etc/ssh/sshd_config
 
 chown root:root /etc/ssh/sshd_config
@@ -317,23 +304,16 @@ cachedir=/var/cache/yum/
 keepcache=0
 debuglevel=2
 logfile=/var/log/yum.log
+pkgpolicy=newest
+distroverpkg=centos-release
+groupremove_leaf_only=1
 exactarch=1
 obsoletes=1
 gpgcheck=1
 plugins=1
 installonly_limit=5
+metadata_expire=1800
 bugtracker_url=http://bugs.centos.org/set_project.php?project_id=16&ref=http://bugs.centos.org/bug_report_page.php?category=yum
-distroverpkg=centos-release
-
-#  This is the default, if you make this bigger yum won't see if the metadata
-# is newer on the remote and so you'll gain the bandwidth of not having to
-# download the new metadata and pay for it by yum not having correct
-# information.
-#  It is esp. important, to have correct metadata, for distributions like
-# Fedora which don't keep old packages around. If you don't like this checking
-# interupting your command line usage, it's much better to have something
-# manually check the metadata once an hour (yum-updatesd will do this).
-# metadata_expire=90m
 
 # PUT YOUR REPOS HERE OR IN separate files named file.repo
 # in /etc/yum.repos.d" > /etc/yum.conf
@@ -348,7 +328,7 @@ yum upgrade
 
 #####Install-Logging/Audit/Security#####
 
-#Rsyslog
+##Rsyslog
 yum install rsyslog
 chkconfig rsyslog on
 
@@ -368,7 +348,24 @@ chmod 640 /etc/rsyslog.conf
 
 pkill -HUP rsyslogd
 
-#AIDE
+#Make sure all rsyslogs are created and secure
+touch /var/log/messages
+chown root:root /var/log/messages
+chmod og-rwx /var/log/messages
+
+touch /var/log/kern.log
+chown root:root /var/log/kern.log
+chmod og-rwx /var/log/kern.log
+
+touch /var/log/daemon.log
+chown root:root /var/log/daemon.log
+chmod og-rwx /var/log/daemon.log
+
+touch /var/log/syslog
+chown root:root /var/log/syslog
+chmod og-rwx /var/log/syslog
+
+##AIDE
 yum install aide
 chkconfig aide on
 
@@ -377,7 +374,7 @@ aide --init
 mv /var/lib/aide/aidb.db.new.gz /var/lib/aide/aide.db.gz
 aide --check
 
-#Auditd
+##Auditd
 yum install audit
 chkconfig auditd on
 
@@ -385,38 +382,35 @@ chkconfig auditd on
 
 mv /etc/audit/auditd.conf /etc/audit/auditd.conf.orig
 
-echo "#
+echo "
+#
 # This file controls the configuration of the audit daemon
 #
 
 log_file = /var/log/audit/audit.log
 log_format = RAW
 log_group = root
+
+max_log_file = 10 
+max_log_file_action = keep_logs
+
+admin_space_left = 50
+space_left = 75
+disk_full_action = SUSPEND
+disk_error_action = SUSPEND
+
+space_left_action = email
+action_mail_acct = root
+admin_space_left_action = halt
+
 priority_boost = 4
 flush = INCREMENTAL
 freq = 20
+
 num_logs = 5
 disp_qos = lossy
 dispatcher = /sbin/audispd
-name_format = NONE
-##name = mydomain
-max_log_file = 10 
-max_log_file_action = keep_logs
-space_left = 75
-space_left_action = email
-action_mail_acct = root
-admin_space_left = 50
-admin_space_left_action = halt
-disk_full_action = SUSPEND
-disk_error_action = SUSPEND
-##tcp_listen_port = 
-tcp_listen_queue = 5
-tcp_max_per_addr = 1
-##tcp_client_ports = 1024-65535
-tcp_client_max_idle = 0
-enable_krb5 = no
-krb5_principal = auditd
-##krb5_key_file = /etc/audit/audit.key" > /etc/audit/auditd.conf
+name_format = NONE" > /etc/audit/auditd.conf
 
 chown root:root /etc/audit/auditd.conf
 chmod 640 /etc/audit/auditd.conf
