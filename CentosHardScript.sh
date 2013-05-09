@@ -439,9 +439,8 @@ echo "# This file contains the auditctl rules that are loaded
 
 #modify rules
 -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change
--a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change
 -a always,exit -F arch=b64 -S clock_settime -k time-change
--a always,exit -F arch=b32 -S clock_settime -k time-change -w /etc/localtime -p wa -k time-change
+-w /etc/localtime -p wa -k time-change
 
 #identity rules
 -w /etc/group -p wa -k identity
@@ -452,7 +451,6 @@ echo "# This file contains the auditctl rules that are loaded
 
 #network rules
 -a exit,always -F arch=b64 -S sethostname -S setdomainname -k system-locale
--a exit,always -F arch=b32 -S sethostname -S setdomainname -k system-locale
 -w /etc/issue -p wa -k system-locale
 -w /etc/issue.net -p wa -k system-locale
 -w /etc/hosts -p wa -k system-locale
@@ -464,36 +462,29 @@ echo "# This file contains the auditctl rules that are loaded
 #login/logout
 -w /var/log/faillog -p wa -k logins
 -w /var/log/lastlog -p wa -k logins
--w /var/log/btmp -p wa -k session
 
 #session info
+-w /var/log/btmp -p wa -k session
 -w /var/run/utmp -p wa -k session
 -w /var/log/wtmp -p wa -k session
 
 #permission modifications
 -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=500 -F auid!=4294967295 -k perm_mod
--a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=500 -F auid!=4294967295 -k perm_mod
 -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=500 -F auid!=4294967295 -k perm_mod
--a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=500 -F auid!=4294967295 -k perm_mod
 -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=500 -F auid!=4294967295 -k perm_mod
--a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=500 -F auid!=4294967295 -k perm_mod
 
 #unauthorized access
 -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=500 -F auid!=4294967295 -k access
--a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=500 -F auid!=4294967295 -k access
 -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=500 -F auid!=4294967295 -k access
--a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=500 -F auid!=4294967295 -k access
 
 #privileged commands
 find PART -xdev \( -perm -4000 -o -perm -2000 \) -type f | awk '{print \ '-a always,exit -F path=' $1 ' -F perm=x -F auid>=500 -F auid!=4294967295 \ -k privileged' }'
 
 #system mounts
 -a always,exit -F arch=b64 -S mount -F auid>=500 -F auid!=4294967295 -k mounts
--a always,exit -F arch=b32 -S mount -F auid>=500 -F auid!=4294967295 -k mounts
 
 #deletion events
 -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=500 -F auid!=4294967295 -k delete
--a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=500 -F auid!=4294967295 -k delete
 
 #sudoers
 -w /etc/sudoers -p wa -k scope
