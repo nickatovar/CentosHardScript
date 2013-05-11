@@ -264,31 +264,31 @@ chkconfig rpcsvcgssd off
 
 #####Remove-Unnecessary-Packages#####
 
-yum erase finger
-yum erase telnet
-yum erase telnet-server
-yum erase talk
-yum erase talk-server
-yum erase anacron
+yum -y erase finger
+yum -y erase telnet
+yum -y erase telnet-server
+yum -y erase talk
+yum -y erase talk-server
+yum -y erase anacron
 
-yum erase bind
-yum erase rsh
-yum erase rsh-server
-yum erase ypbind
-yum erase ypserv
-yum erase tftp
-yum erase tftp-server
-yum erase xinetd
-yum erase dhcp
-yum erase openldap-servers
-yum erase openldap-clients
-yum erase vsftpd
-yum erase dovecot
-yum erase samba
-yum erase squid
-yum erase sendmail
-yum erase net-snmp
-yum groupremove ÒX Window SystemÓ
+yum -y erase bind
+yum -y erase rsh
+yum -y erase rsh-server
+yum -y erase ypbind
+yum -y erase ypserv
+yum -y erase tftp
+yum -y erase tftp-server
+yum -y erase xinetd
+yum -y erase dhcp
+yum -y erase openldap-servers
+yum -y erase openldap-clients
+yum -y erase vsftpd
+yum -y erase dovecot
+yum -y erase samba
+yum -y erase squid
+yum -y erase sendmail
+yum -y erase net-snmp
+yum -y groupremove ÒX Window SystemÓ
 
 #####Keep-Software-Up-to-Date#####
 
@@ -323,13 +323,13 @@ chmod 640 /etc/yum.conf
 
 #Check for updates and upgrade
 
-yum check-update
-yum upgrade
+yum -y check-update
+yum -y upgrade
 
 #####Install-Logging/Audit/Security#####
 
 ##Rsyslog##
-yum install rsyslog
+yum -y install rsyslog
 chkconfig rsyslog on
 
 mv /etc/rsyslog.conf /etc/rsyslog.conf.orig
@@ -366,7 +366,7 @@ chown root:root /var/log/syslog
 chmod og-rwx /var/log/syslog
 
 #Logwatch (used to summarize rsyslog)
-yum install logwatch
+yum -y  install logwatch
 chkconfig logwatch on
 
 echo "HostLimit = no
@@ -375,7 +375,7 @@ MultiEmail = no
 Service = -zz-disk_space" >> /etc/logwatch/conf/logwatch.conf
 
 ##Auditd##
-yum install audit
+yum -y install audit
 chkconfig auditd on
 
 #Auditd Config
@@ -515,21 +515,21 @@ chmod 640 /etc/audit/audit.rules
 
 #Aureport (used to summarize auditd)
 #This may come pre-installed
-yum install aureport
+yum -y install aureport
 chkconfig aureport on
 
 ##AIDE##
-yum install aide
+yum -y install aide
 chkconfig aide on
 
 #Generate a new AIDE database
 aide --init
-mv /var/lib/aide/aidb.db.new.gz /var/lib/aide/aide.db.gz
+mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
 aide --check
 
 ##TCP_Wrappers##
 
-yum install tcp_wrappers
+yum -y install tcp_wrappers
 
 #TCP_Wrappers Config
 mv /etc/hosts.deny /etc/hosts.deny.orig
@@ -594,11 +594,11 @@ chmod -R go-rwx /var/spool/cron
 ##CronJobs
 
 #YUM
-echo "yum -R 120 -e 0 -d 0 -y upgrade yum" >> /etc/cron.monthly/yum.cron
+echo "yum -R 120 -e 0 -d 0 -y upgrade yum" > /etc/cron.monthly/yum.cron
 echo "yum -R 10 -e 0 -d 0 -y upgrade" >> /etc/cron.monthly/yum.cron
 
 #AIDE
-echo "aide --check" >> /etc/cron.daily/aide.cron
+echo "aide --check" > /etc/cron.daily/aide.cron
 
 #Logwatch
 #This can be removed
@@ -610,18 +610,17 @@ echo "aureport --key --summary" >> /etc/cron.daily/aureport.cron
 
 #Verify-Packages
 
-echo "rpm -qVa" >> /etc/cron.daily/rpm.cron
+echo "rpm -qVa" > /etc/cron.daily/rpm.cron
 
 #####Webmin#####
 
-echo
-"[Webmin]
-name=Webmin Distribution Neutral
+echo "[Webmin]
+name=Webm in Distribution Neutral
 #baseurl=http://download.webmin.com/download/yum
 mirrorlist=http://download.webmin.com/download/yum/mirrorlist
 enabled=1" > /etc/yum.repos.d/webmin.repo
 
-wget -O /tmp http://www.webmin.com/jcameron-key.asc
+wget -P /tmp http://www.webmin.com/jcameron-key.asc
 rpm --import /tmp/jcameron-key.asc
 
 yum -y install webmin
