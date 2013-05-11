@@ -328,7 +328,7 @@ yum upgrade
 
 #####Install-Logging/Audit/Security#####
 
-##Rsyslog
+##Rsyslog##
 yum install rsyslog
 chkconfig rsyslog on
 
@@ -365,16 +365,16 @@ touch /var/log/syslog
 chown root:root /var/log/syslog
 chmod og-rwx /var/log/syslog
 
-##AIDE
-yum install aide
-chkconfig aide on
+#Logwatch (used to summarize rsyslog)
+yum install logwatch
+chkconfig logwatch on
 
-#Generate a new AIDE database
-aide --init
-mv /var/lib/aide/aidb.db.new.gz /var/lib/aide/aide.db.gz
-aide --check
+echo "HostLimit = no
+SplitHosts = yes
+MultiEmail = no
+Service = -zz-disk_space" >> /etc/logwatch/conf/logwatch.conf
 
-##Auditd
+##Auditd##
 yum install audit
 chkconfig auditd on
 
@@ -513,7 +513,21 @@ auditctl -w /tmp -p e -k webserver-watch-tmp" > /etc/audit/audit.rules
 chown root:root /etc/audit/audit.rules
 chmod 640 /etc/audit/audit.rules
 
-#####TCP_Wrappers#####
+#Aureport (used to summarize auditd)
+#This may come pre-installed
+yum install aureport
+chkconfig aureport on
+
+##AIDE##
+yum install aide
+chkconfig aide on
+
+#Generate a new AIDE database
+aide --init
+mv /var/lib/aide/aidb.db.new.gz /var/lib/aide/aide.db.gz
+aide --check
+
+##TCP_Wrappers##
 
 yum install tcp_wrappers
 
@@ -547,7 +561,6 @@ mv /etc/postfix/main.cf /etc/postfix/main.cf.orig
 echo "inet_interfaces = localhost
 
 #Limit Denial of Service Attacks
-
 default_process_limit = 100
 smtpd_client_connection_count_limit = 10
 smtpd_client_connection_rate_limit = 30
@@ -561,79 +574,43 @@ mynetworks_style = subnet
 mynetworks_style = host
 mynetworks = 127.0.0.1" > /etc/postfix/main.cf
 
-#logwatch
-
-/etc/logwatch/conf/logwatch.conf
-
-HostLimit = no
-SplitHosts = yes
-MultiEmail = no
-Service = -zz-disk_space
-
 #####CRON#####
 
 #Restrict Cron
 chown root:root /etc/crontab
 chmod 600 /etc/crontab
+
+rm /etc/cron.deny
+echo "root" > /etc/cron.allow
+chmod og-rwx /etc/cron.allow
+chown root:root /etc/cron.allow
+
 cd /etc
 chown -R root:root cron.hourly cron.daily cron.weekly cron.monthly cron.d
 chmod -R go-rwx cron.hourly cron.daily cron.weekly cron.monthly cron.d
 chown root:root /var/spool/cron
 chmod -R go-rwx /var/spool/cron
 
-rm /etc/cron.deny
-rm /etc/at.deny
-chmod og-rwx /etc/cron.allow
-chmod og-rwx /etc/at.allow
-chown root:root /etc/cron.allow
-chown root:root /etc/at.allow
-
-rm /etc/at.deny
-touch /etc/at.allow
-chown root:root /etc/at.allow
-chmod og-rwx /etc/at.allow
-
-chown root:root /etc/cron.d
-chmod og-rwx /etc/cron.d
-
-chown root:root /etc/crontab
-chmod og-rwx /etc/crontab
-
-chown root:root /etc/cron.hourly
-chmod og-rwx /etc/cron.hourly
-
-chown root:root /etc/cron.daily
-chmod og-rwx /etc/cron.daily
-
-chown root:root /etc/cron.weekly
-chmod og-rwx /etc/cron.weekly
-
-chown root:root /etc/cron.montly
-chmod og-rwx /etc/cron.montly
-
-Remove the cron.deny file:
-# rm /etc/cron.deny
-2. Edit /etc/cron.allow, adding one line for each user allowed to use the crontab command to create
-cron jobs.
-3. Remove the at.deny file:
-# rm /etc/at.deny
-4. Edit /etc/at.allow, adding one line for each user allowed to use the at command to create at jobs.
-
 ##CronJobs
 
 #YUM
-echo Òyum -R 120 -e 0 -d 0 -y upgrade yumÓ >> /etc/cron.monthly/yum.cron
-echo Òyum -R 10 -e 0 -d 0 -y upgradeÓ >> /etc/cron.monthly/yum.cron
+echo "yum -R 120 -e 0 -d 0 -y upgrade yum" >> /etc/cron.monthly/yum.cron
+echo "yum -R 10 -e 0 -d 0 -y upgrade" >> /etc/cron.monthly/yum.cron
+
+#AIDE
+echo "aide --check" >> /etc/cron.daily/aide.cron
 
 #Logwatch
+#This can be removed
 echo "/usr/share/logwatch/scripts/logwatch.pl 0logwatch" > /etc/cron.daily/logwatch.cron
 
+#Aureport
+#This can be removed
+echo "aureport --key --summary" >> /etc/cron.daily/aureport.cron
 
-######Verify-Packages#####
+#Verify-Packages
 
-echo "These packages have changed, it may be wise to re-install the packages below: "
-rpm -qVa | awk '$2!="c" {print $0}'
-
+echo "rpm -qVa" >> /etc/cron.daily/rpm.cron
 
 #####Webmin#####
 
