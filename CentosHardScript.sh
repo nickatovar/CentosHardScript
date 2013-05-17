@@ -1,5 +1,26 @@
 ############# CentOS 6 Hardening Script ###########
 
+#This script is meant to take basic steps in hardening your
+#Centos6.X environment remember however that no system is
+#foolproof and watching your logs is thebest defense
+#against intruders and malicious activity.
+
+#Look for "*Change This*" throughout the script to specific
+#system settings that must be altered.
+
+#Also make sure that if you are using ssh to log into your
+#your server to add another user, other than root, and add them
+#to the ssh group
+
+#Please Review the sources below to understand what this
+#script is actually doing.
+
+###Sources###
+#Created from:
+#http://wiki.centos.org/HowTos/OS_Protection
+#http://benchmarks.cisecurity.org/downloads/show-single/?file=rhel6.100
+#http://www.nsa.gov/ia/_files/os/redhat/rhel5-guide-i731.pdf
+
 ####Set-Core-Permissions#####
 
 #Secure the Terminal by removing all non-essential consoles
@@ -36,7 +57,7 @@ authconfig --passalgo=sha512 --update
 echo umask 027 >> /etc/sysconfig/init
 
 #Add profile timeouts to reap idle users
-echo "Idle users will be removed after 15 minutes" >> /etc/profile.d/os-security.sh
+echo "#Idle users will be removed after 15 minutes" >> /etc/profile.d/os-security.sh
 echo "readonly TMOUT=900" >> /etc/profile.d/os-security.sh
 echo "readonly HISTFILE" >> /etc/profile.d/os-security.sh 
 chmod +x /etc/profile.d/os-security.sh
@@ -83,7 +104,8 @@ mv /etc/ssh/sshd_config /etc/ssh/sshd_config.orig
 echo "#This is the sshd server system-wide configuration file. See sshd_config(5) for more information.
 
 #The default port is 22, change the port number below to help secure the server
-Port 2200
+#*Change This*
+Port 22
 
 #Disable legacy (protocol version 1) support.
 Protocol 2
@@ -115,10 +137,10 @@ IgnoreRhosts yes
 
 #Change this to a group on your system that you want to have ssh access
 #Or use AllowUsers, DenyUsers, DenyGroups for other options
+#*Change This*
 AllowGroups ssh
 
 #SSH Session Keep-Alive
-TCPKeepAlive Yes
 ClientAliveInterval 300
 ClientAliveCountMax 0
 
@@ -143,9 +165,9 @@ chmod 600 /etc/ssh/sshd_config
 #####Disable-Kernel-Drivers#####
 
 #IPV6
-echo Òoptions ipv6 disable=1Ó > /etc/modprobe.d/ipv6.conf
-echo ÒNETWORKING_IPV6=noÓ >> /etc/sysconfig/network
-echo ÒIPV6INIT=noÓ >> /etc/sysconfig/network
+echo "options ipv6 disable=1" > /etc/modprobe.d/ipv6.conf
+echo "NETWORKING_IPV6=no" >> /etc/sysconfig/network
+echo "IPV6INIT=no" >> /etc/sysconfig/network
 #DCCP
 echo "install dccp /bin/true" >> /etc/modprobe.d/CIS.conf
 #SCTP
@@ -245,6 +267,7 @@ chkconfig ip6tables off
 chkconfig atd off
 chkconfig yum-updatesd off
 chkconfig syslog off
+chkconfig cvs off
 
 chkconfig chargen-dgram off
 chkconfig chargen-stream off
@@ -270,6 +293,7 @@ yum -y erase telnet-server
 yum -y erase talk
 yum -y erase talk-server
 yum -y erase anacron
+yum -y erase cvs
 
 yum -y erase bind
 yum -y erase rsh
@@ -288,7 +312,7 @@ yum -y erase samba
 yum -y erase squid
 yum -y erase sendmail
 yum -y erase net-snmp
-yum -y groupremove ÒX Window SystemÓ
+yum -y groupremove "X Window System"
 
 #####Keep-Software-Up-to-Date#####
 
@@ -334,24 +358,27 @@ chkconfig rsyslog on
 
 mv /etc/rsyslog.conf /etc/rsyslog.conf.orig
 
-echo "$ActionFileDefaultTemplate RSYSLOG TraditionalFileFormat
+echo "'$ActionFileDefaultTemplate' RSYSLOG TraditionalFileFormat
 
-auth,user.* /var/log/messages
-kern.* /var/log/kern.log
+auth,user.* /var/log/auth.log
+kern.*   /var/log/kern.log
 daemon.* /var/log/daemon.log
-syslog.* /var/log/syslog
+syslog.* /var/log/sys.log
+mail.*   /var/log/mail.log
+*.err    /var/log/err.log
 lpr,news,uucp,local0,local1,local2,local3,local4,local5,local6.* /var/log/unused.log
 " > /etc/rsyslog.conf
 
 chown root:root /etc/rsyslog.conf
 chmod 640 /etc/rsyslog.conf
 
-pkill -HUP rsyslogd
+#Remove default logs
+rm -f /var/log/*
 
 #Make sure all rsyslogs are created and secure
-touch /var/log/messages
-chown root:root /var/log/messages
-chmod og-rwx /var/log/messages
+touch /var/log/auth.log
+chown root:root /var/log/auth.log
+chmod og-rwx /var/log/auth.log
 
 touch /var/log/kern.log
 chown root:root /var/log/kern.log
@@ -361,18 +388,52 @@ touch /var/log/daemon.log
 chown root:root /var/log/daemon.log
 chmod og-rwx /var/log/daemon.log
 
-touch /var/log/syslog
-chown root:root /var/log/syslog
-chmod og-rwx /var/log/syslog
+touch /var/log/sys.log
+chown root:root /var/log/sys.log
+chmod og-rwx /var/log/sys.log
+
+touch /var/log/mail.log
+chown root:root /var/log/mail.log
+chmod og-rwx /var/log/mail.log
+
+touch /var/log/err.log
+chown root:root /var/log/err.log
+chmod og-rwx /var/log/err.log
+
+
+#Restart rsyslog
+/etc/init.d/rsyslog restart
 
 #Logwatch (used to summarize rsyslog)
 yum -y  install logwatch
 chkconfig logwatch on
 
-echo "HostLimit = no
+mv /etc/logwatch/conf/logwatch.conf /etc/logwatch/conf/logwatch.conf.orig
+
+echo "
+#
+# This file controls the configuration of the logwatch daemon
+#
+
+LogDir = /var/log
+TmpDir = /var/cache/logwatch
+
+#*Change This*
+MailTo = test@example.com
+MailFrom = Logwatch
+mailer = 'sendmail -t'
+Print = No
+
+Archives = Yes
+Range = yesterday
+Detail = Med
+
+Service = '-zz-disk_space'
+
+DailyReport = Yes
+HostLimit = no
 SplitHosts = yes
-MultiEmail = no
-Service = -zz-disk_space" >> /etc/logwatch/conf/logwatch.conf
+MultiEmail = no" >> /etc/logwatch/conf/logwatch.conf
 
 ##Auditd##
 yum -y install audit
@@ -387,7 +448,7 @@ echo "
 # This file controls the configuration of the audit daemon
 #
 
-log_file = /var/log/audit/audit.log
+log_file = /var/log/auditd.log
 log_format = RAW
 log_group = root
 
@@ -430,10 +491,6 @@ echo "# This file contains the auditctl rules that are loaded
 # Increase the buffers to survive stress events.
 # Make this bigger for busy systems
 -b 320
-
-#Set system audit so that audit rules cannot be modified with auditctl
-
--e 2
 
 # Feel free to add below this line. See auditctl man page
 
@@ -508,10 +565,16 @@ auditctl -w /etc/shadow -k shadow-file -p rwxa
 auditctl -a exit,never -S mount
 
 #Watch /tmp
-auditctl -w /tmp -p e -k webserver-watch-tmp" > /etc/audit/audit.rules
+auditctl -w /tmp -p e -k webserver-watch-tmp
+
+#Set system audit so that audit rules cannot be modified with auditctl
+-e 2 " > /etc/audit/audit.rules
 
 chown root:root /etc/audit/audit.rules
 chmod 640 /etc/audit/audit.rules
+
+#Restart rsyslog
+/etc/init.d/auditd restart
 
 #Aureport (used to summarize auditd)
 #This may come pre-installed
@@ -521,6 +584,172 @@ chkconfig aureport on
 ##AIDE##
 yum -y install aide
 chkconfig aide on
+
+mv /etc/aide.conf /etc/aide.conf.orig
+
+echo "
+# AIDE configuration file.
+
+@@define DBDIR /var/lib/aide
+@@define LOGDIR /var/log/
+
+# The location of the database to be read.
+database=file:@@{DBDIR}/aide.db.gz
+
+# The location of the database to be written.
+#database_out=sql:host:port:database:login_name:passwd:table
+#database_out=file:aide.db.new
+database_out=file:@@{DBDIR}/aide.db.new.gz
+
+# Whether to gzip the output to database
+gzip_dbout=yes
+
+# Default.
+verbose=5
+
+report_url=file:@@{LOGDIR}/aide.log
+report_url=stdout
+
+# These are the default rules.
+
+ALLXTRAHASHES = sha1+rmd160+sha256+sha512+tiger
+EVERYTHING = R+ALLXTRAHASHES
+NORMAL = R+rmd160+sha256
+DIR = p+i+n+u+g+acl+selinux+xattrs
+PERMS = p+i+u+g+acl+selinux
+LOG = >
+LSPP = R+sha256
+DATAONLY =  p+n+u+g+s+acl+selinux+xattrs+md5+sha256+rmd160+tiger
+
+# Next decide what directories/files you want in the database.
+
+/boot   NORMAL
+/bin    NORMAL
+/sbin   NORMAL
+/lib    NORMAL
+/lib64  NORMAL
+/opt    NORMAL
+/usr    NORMAL
+/root   NORMAL
+# These are too volatile
+!/usr/src
+!/usr/tmp
+
+# Check only permissions, inode, user and group for /etc, but
+# cover some important files closely.
+/etc    PERMS
+!/etc/mtab
+# Ignore backup files
+!/etc/.*~
+/etc/exports  NORMAL
+/etc/fstab    NORMAL
+/etc/passwd   NORMAL
+/etc/group    NORMAL
+/etc/gshadow  NORMAL
+/etc/shadow   NORMAL
+/etc/security/opasswd   NORMAL
+
+/etc/hosts.allow   NORMAL
+/etc/hosts.deny    NORMAL
+
+/etc/sudoers NORMAL
+/etc/skel NORMAL
+
+/etc/logrotate.d NORMAL
+
+/etc/resolv.conf DATAONLY
+
+/etc/nscd.conf NORMAL
+/etc/securetty NORMAL
+
+# Shell/X starting files
+/etc/profile NORMAL
+/etc/bashrc NORMAL
+/etc/bash_completion.d/ NORMAL
+/etc/login.defs NORMAL
+/etc/zprofile NORMAL
+/etc/zshrc NORMAL
+/etc/zlogin NORMAL
+/etc/zlogout NORMAL
+/etc/profile.d/ NORMAL
+/etc/X11/ NORMAL
+
+# Pkg manager
+/etc/yum.conf NORMAL
+/etc/yumex.conf NORMAL
+/etc/yumex.profiles.conf NORMAL
+/etc/yum/ NORMAL
+/etc/yum.repos.d/ NORMAL
+
+/var/log   LOG
+/var/run/utmp LOG
+
+# This gets new/removes-old filenames daily
+!/var/log/sa
+# As we are checking it, we've truncated yesterdays size to zero.
+!/var/log/aide.log
+
+# LSPP rules...
+# AIDE produces an audit record, so this becomes perpetual motion.
+# /var/log/audit/ LSPP
+/etc/audit/ LSPP
+/etc/libaudit.conf LSPP
+/usr/sbin/stunnel LSPP
+/var/spool/at LSPP
+/etc/at.allow LSPP
+/etc/at.deny LSPP
+/etc/cron.allow LSPP
+/etc/cron.deny LSPP
+/etc/cron.d/ LSPP
+/etc/cron.daily/ LSPP
+/etc/cron.hourly/ LSPP
+/etc/cron.monthly/ LSPP
+/etc/cron.weekly/ LSPP
+/etc/crontab LSPP
+/var/spool/cron/root LSPP
+
+/etc/login.defs LSPP
+/etc/securetty LSPP
+/var/log/faillog LSPP
+/var/log/lastlog LSPP
+
+/etc/hosts LSPP
+/etc/sysconfig LSPP
+
+/etc/inittab LSPP
+/etc/grub/ LSPP
+/etc/rc.d LSPP
+
+/etc/ld.so.conf LSPP
+
+/etc/localtime LSPP
+
+/etc/sysctl.conf LSPP
+
+/etc/modprobe.conf LSPP
+
+/etc/pam.d LSPP
+/etc/security LSPP
+/etc/aliases LSPP
+/etc/postfix LSPP
+
+/etc/ssh/sshd_config LSPP
+/etc/ssh/ssh_config LSPP
+
+/etc/stunnel LSPP
+
+/etc/vsftpd.ftpusers LSPP
+/etc/vsftpd LSPP
+
+/etc/issue LSPP
+/etc/issue.net LSPP
+
+/etc/cups LSPP
+
+!/var/log/and-httpd
+
+# Admins dot files constantly change, just check perms
+/root/\..* PERMS" > /etc/aide.conf
 
 #Generate a new AIDE database
 aide --init
@@ -561,7 +790,6 @@ mv /etc/postfix/main.cf /etc/postfix/main.cf.orig
 echo "inet_interfaces = localhost
 
 #Limit Denial of Service Attacks
-default_process_limit = 100
 smtpd_client_connection_count_limit = 10
 smtpd_client_connection_rate_limit = 30
 queue_minfree = 20971520
@@ -570,9 +798,11 @@ message_size_limit = 10485760
 smtpd_recipient_limit = 100
 
 #Configure Trusted Networks and Hosts
-mynetworks_style = subnet
-mynetworks_style = host
-mynetworks = 127.0.0.1" > /etc/postfix/main.cf
+mynetworks = 127.0.0.1/8
+myorigin = $mydomain  
+mydestination = $myhostname localhost.$mydomain localhost $mydomain
+relay_domains = 
+fallback_relay =" > /etc/postfix/main.cf
 
 #####CRON#####
 
@@ -612,6 +842,10 @@ echo "aureport --key --summary" >> /etc/cron.daily/aureport.cron
 
 echo "rpm -qVa" > /etc/cron.daily/rpm.cron
 
+#####Webserver#####
+yum install mod_ssl httpd
+
+
 #####Webmin#####
 
 echo "[Webmin]
@@ -624,9 +858,3 @@ wget -P /tmp http://www.webmin.com/jcameron-key.asc
 rpm --import /tmp/jcameron-key.asc
 
 yum -y install webmin
-
-###Sources###
-#Created from:
-#http://wiki.centos.org/HowTos/OS_Protection
-#http://benchmarks.cisecurity.org/downloads/show-single/?file=rhel6.100
-#http://www.nsa.gov/ia/_files/os/redhat/rhel5-guide-i731.pdf
