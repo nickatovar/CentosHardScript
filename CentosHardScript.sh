@@ -843,37 +843,3 @@ echo "rpm -qVa" > /etc/cron.daily/rpm.cron
 aide --init
 mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
 aide --check
-
-#####Different Script for web?####
-
-#####Webserver#####
-yum install httpd php mysql-server php-mysql
-
-service httpd start
-service mysqld start
-
-chkconfig httpd on
-chkconfig mysqld on
-
-##Apache##
-
-mkdir -p /etc/httpd/vhosts.d
-echo "Include vhosts.d/*.conf" >> /etc/httpd/conf/httpd.conf
-
-#*Change This*
-mkdir -p /var/www/vhosts/example.com/htdocs
-chown apache:apache /var/www -R
-
-
-##Webmin##
-
-echo "[Webmin]
-name=Webmin Distribution Neutral
-#baseurl=http://download.webmin.com/download/yum
-mirrorlist=http://download.webmin.com/download/yum/mirrorlist
-enabled=1" > /etc/yum.repos.d/webmin.repo
-
-wget -P /tmp http://www.webmin.com/jcameron-key.asc
-rpm --import /tmp/jcameron-key.asc
-
-yum -y install webmin
