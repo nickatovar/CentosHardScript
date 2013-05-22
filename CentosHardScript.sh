@@ -2,7 +2,7 @@
 
 #This script is meant to take basic steps in hardening your
 #Centos6.X environment remember however that no system is
-#foolproof and watching your logs is thebest defense
+#foolproof and watching your logs is the best defense
 #against intruders and malicious activity.
 
 #Look for "*Change This*" throughout the script to specific
@@ -12,7 +12,7 @@
 #your server to add another user, other than root, and add them
 #to the ssh group
 
-#Please Review the sources below to understand what this
+#Please review the sources below to understand what this
 #script is actually doing.
 
 ###Sources###
@@ -137,7 +137,7 @@ IgnoreRhosts yes
 
 #Change this to a group on your system that you want to have ssh access
 #Or use AllowUsers, DenyUsers, DenyGroups for other options
-#*Change This*
+#*Change This* (if you want)
 AllowGroups ssh
 
 #SSH Session Keep-Alive
@@ -573,7 +573,7 @@ auditctl -w /tmp -p e -k webserver-watch-tmp
 chown root:root /etc/audit/audit.rules
 chmod 640 /etc/audit/audit.rules
 
-#Restart rsyslog
+#Restart auditd
 /etc/init.d/auditd restart
 
 #Aureport (used to summarize auditd)
@@ -751,11 +751,6 @@ DATAONLY =  p+n+u+g+s+acl+selinux+xattrs+md5+sha256+rmd160+tiger
 # Admins dot files constantly change, just check perms
 /root/\..* PERMS" > /etc/aide.conf
 
-#Generate a new AIDE database
-aide --init
-mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
-aide --check
-
 ##TCP_Wrappers##
 
 yum -y install tcp_wrappers
@@ -784,6 +779,8 @@ nospoof on" > /etc/host.conf
 chmod 644 /etc/host.conf
 
 #####Postfix#####
+#Set to recieve internal mail only, but can send summaries externally
+#*Change This* if you need something different
 
 mv /etc/postfix/main.cf /etc/postfix/main.cf.orig
 
@@ -842,14 +839,36 @@ echo "aureport --key --summary" >> /etc/cron.daily/aureport.cron
 
 echo "rpm -qVa" > /etc/cron.daily/rpm.cron
 
+##Generate a new AIDE database##
+aide --init
+mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+aide --check
+
+#####Different Script for web?####
+
 #####Webserver#####
-yum install mod_ssl httpd
+yum install httpd php mysql-server php-mysql
+
+service httpd start
+service mysqld start
+
+chkconfig httpd on
+chkconfig mysqld on
+
+##Apache##
+
+mkdir -p /etc/httpd/vhosts.d
+echo "Include vhosts.d/*.conf" >> /etc/httpd/conf/httpd.conf
+
+#*Change This*
+mkdir -p /var/www/vhosts/example.com/htdocs
+chown apache:apache /var/www -R
 
 
-#####Webmin#####
+##Webmin##
 
 echo "[Webmin]
-name=Webm in Distribution Neutral
+name=Webmin Distribution Neutral
 #baseurl=http://download.webmin.com/download/yum
 mirrorlist=http://download.webmin.com/download/yum/mirrorlist
 enabled=1" > /etc/yum.repos.d/webmin.repo
