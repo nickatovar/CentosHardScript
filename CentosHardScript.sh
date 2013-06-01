@@ -2,15 +2,17 @@
 
 #This script is meant to take basic steps in hardening your
 #Centos6.X environment remember however that no system is
-#foolproof and watching your logs is the best defense
+#inpenetratable and watching your logs is the best defense
 #against intruders and malicious activity.
 
-#Look for "*Change This*" throughout the script to specific
-#system settings that must be altered.
+#Look for "*Change This*" throughout this script for specific
+#system settings that should be altered.
 
-#Also make sure that if you are using ssh to log into your
-#your server to add another user, other than root, and add them
-#to the ssh group
+#This script will remove most standard installation packages
+#leaving only basic applications including SSH and Postfix that
+#have outside access. Make sure that if you are using ssh to 
+#log into your your server add a user, other than root,
+#and add them to an ssh capable group. 
 
 #Please review the sources below to understand what this
 #script is actually doing.
@@ -761,8 +763,6 @@ mv  /etc/hosts.allow  /etc/hosts.allow.orig
 
 echo "ALL:ALL" > /etc/hosts.deny
 echo "sshd:ALL" > /etc/hosts.allow
-echo "portmap: localhost" >> /etc/hosts.allow
-echo "portmap: 127.0.0.1" >> /etc/hosts.allow
 
 chmod 644 /etc/hosts.allow
 chmod 644 /etc/hosts.deny
@@ -839,7 +839,69 @@ echo "aureport --key --summary" >> /etc/cron.daily/aureport.cron
 
 echo "rpm -qVa" > /etc/cron.daily/rpm.cron
 
-##Generate a new AIDE database##
+#####FIREWALL#####
+
+#Flush all current rules from iptables
+
+ iptables -F
+ 
+#Set default policies for INPUT, FORWARD and OUTPUT chains
+
+ iptables -P INPUT DROP
+ iptables -P FORWARD DROP
+ iptables -P OUTPUT ACCEPT
+ 
+#Set access for localhost
+
+ iptables -A INPUT -i lo -j ACCEPT
+ 
+#Accept packets belonging to established and related connections
+
+ iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+#Allow SSH connections. This is essential when working on remote
+#servers via SSH to prevent locking yourself out of the system
+#*Change This* to your established ssh port
+
+ iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+  
+#ICMP Rules
+
+ iptables -A INPUT -p icmp --icmp-type echo-reply -j ACCEPT
+ iptables -A INPUT -p icmp --icmp-type destination-unreachable -j ACCEPT
+ iptables -A INPUT -p icmp --icmp-type time-exceeded -j ACCEPT
+
+#Log and then drop bogon networks
+
+ iptables -A INPUT -i eth0 -s 10.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF A: "
+ iptables -A INPUT -i eth0 -s 172.16.0.0/12 -j LOG --log-prefix "IP DROP SPOOF B: "
+ iptables -A INPUT -i eth0 -s 192.168.0.0/16 -j LOG --log-prefix "IP DROP SPOOF C: "
+ iptables -A INPUT -i eth0 -s 224.0.0.0/4 -j LOG --log-prefix "IP DROP MULTICAST D: "
+ iptables -A INPUT -i eth0 -s 240.0.0.0/5 -j LOG --log-prefix "IP DROP SPOOF E: "
+ iptables -A INPUT -i eth0 -d 127.0.0.0/8 -j LOG --log-prefix "IP DROP LOOPBACK: "
+ 
+#SYN flood protection.
+
+ iptables -A INPUT -p tcp Ðsyn -m limit Ðlimit 1/s Ðlimit-burst 4 -j ACCEPT
+ iptables -A INPUT -p tcp Ðsyn -j DROP
+ 
+#Log then drop the packets when finished
+ 
+ iptables -A INPUT -j LOG
+ iptables -A INPUT -j DROP
+ COMMIT
+ 
+#Save settings
+
+ /sbin/service iptables save
+
+#List rules
+
+ iptables -L -v
+ 
+##AIDE Database##
+#After everything is finished
+#generate a new database#
 aide --init
 mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
 aide --check
