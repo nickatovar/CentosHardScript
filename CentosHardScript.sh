@@ -375,7 +375,7 @@ chown root:root /etc/rsyslog.conf
 chmod 640 /etc/rsyslog.conf
 
 #Remove default logs
-rm -f /var/log/*
+rm -fR /var/log/*
 
 #Make sure all rsyslogs are created and secure
 touch /var/log/auth.log
@@ -804,6 +804,7 @@ fallback_relay =" > /etc/postfix/main.cf
 #####CRON#####
 
 #Restrict Cron
+mkdir /etc/crontab
 chown root:root /etc/crontab
 chmod 600 /etc/crontab
 
@@ -813,8 +814,11 @@ chmod og-rwx /etc/cron.allow
 chown root:root /etc/cron.allow
 
 cd /etc
+mkdir cron.hourly cron.daily cron.weekly cron.monthly cron.d
 chown -R root:root cron.hourly cron.daily cron.weekly cron.monthly cron.d
 chmod -R go-rwx cron.hourly cron.daily cron.weekly cron.monthly cron.d
+
+mkdir /var/spool/cron
 chown root:root /var/spool/cron
 chmod -R go-rwx /var/spool/cron
 
@@ -845,12 +849,14 @@ echo "rpm -qVa" > /etc/cron.daily/rpm.cron
 
  iptables -F
  
-#Set default policies for INPUT, FORWARD and OUTPUT chains
+#Save to make sure flush is not just temporary
 
- iptables -P INPUT DROP
- iptables -P FORWARD DROP
- iptables -P OUTPUT ACCEPT
+ /sbin/service iptables save 
  
+#Create a LOG chain
+
+ iptables -N LOGandDROP
+  
 #Set access for localhost
 
  iptables -A INPUT -i lo -j ACCEPT
@@ -865,31 +871,47 @@ echo "rpm -qVa" > /etc/cron.daily/rpm.cron
 
  iptables -A INPUT -p tcp --dport 22 -j ACCEPT
   
-#ICMP Rules
+#ICMP rules
 
  iptables -A INPUT -p icmp --icmp-type echo-reply -j ACCEPT
  iptables -A INPUT -p icmp --icmp-type destination-unreachable -j ACCEPT
  iptables -A INPUT -p icmp --icmp-type time-exceeded -j ACCEPT
 
-#Log and then drop bogon networks
+#Log and then drop martians
+#*Change This* - Make sure to change the interface for what your server uses.
+ 
+ iptables -A INPUT -i venet0 -s 0.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i venet0 -s 10.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i venet0 -s 127.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i venet0 -s 169.254.0.0/16 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i venet0 -s 172.16.0.0/12 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i venet0 -s 192.0.0.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i venet0 -s 192.0.2.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i venet0 -s 192.168.0.0/16 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i venet0 -s 198.18.0.0/15 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i venet0 -s 198.51.100.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i venet0 -s 203.0.113.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i venet0 -s 240.0.0.0/4 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i venet0 -s 255.255.255.255/32 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i venet0 -s 224.0.0.0/4 -j LOG --log-prefix "IP DROP MULTICAST:"
 
- iptables -A INPUT -i eth0 -s 10.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF A: "
- iptables -A INPUT -i eth0 -s 172.16.0.0/12 -j LOG --log-prefix "IP DROP SPOOF B: "
- iptables -A INPUT -i eth0 -s 192.168.0.0/16 -j LOG --log-prefix "IP DROP SPOOF C: "
- iptables -A INPUT -i eth0 -s 224.0.0.0/4 -j LOG --log-prefix "IP DROP MULTICAST D: "
- iptables -A INPUT -i eth0 -s 240.0.0.0/5 -j LOG --log-prefix "IP DROP SPOOF E: "
- iptables -A INPUT -i eth0 -d 127.0.0.0/8 -j LOG --log-prefix "IP DROP LOOPBACK: "
  
 #SYN flood protection.
 
- iptables -A INPUT -p tcp Ðsyn -m limit Ðlimit 1/s Ðlimit-burst 4 -j ACCEPT
- iptables -A INPUT -p tcp Ðsyn -j DROP
+ iptables -A INPUT -p tcp --syn -m limit --limit 1/s -limit-burst 4 -j ACCEPT
+ iptables -A INPUT -p tcp --syn -j DROP
  
 #Log then drop the packets when finished
- 
- iptables -A INPUT -j LOG
- iptables -A INPUT -j DROP
- COMMIT
+
+iptables -A INPUT -j LOGLOGandDROP
+iptables -A LOGandDROP -m limit --limit 2/min -j LOG --log-prefix "IPTables-Dropped: " --log-level 4
+iptables -A LOGandDROP -j DROP
+
+#Set default chain behaviour
+
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT ACCEPT
  
 #Save settings
 
