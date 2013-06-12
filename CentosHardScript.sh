@@ -851,11 +851,17 @@ echo "rpm -qVa" > /etc/cron.daily/rpm.cron
  
 #Save to make sure flush is not just temporary
 
- /sbin/service iptables save 
+ /sbin/service iptables save
+ 
+#Set default chain behaviour
+
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT ACCEPT
  
 #Create a LOG chain
 
- iptables -N LOGandDROP
+ iptables -N LOGnDROP
   
 #Set access for localhost
 
@@ -898,20 +904,14 @@ echo "rpm -qVa" > /etc/cron.daily/rpm.cron
  
 #SYN flood protection.
 
- iptables -A INPUT -p tcp --syn -m limit --limit 1/s -limit-burst 4 -j ACCEPT
+ iptables -A INPUT -p tcp --syn -m limit --limit 1/second -limit-burst 4 -j ACCEPT
  iptables -A INPUT -p tcp --syn -j DROP
  
 #Log then drop the packets when finished
 
-iptables -A INPUT -j LOGLOGandDROP
-iptables -A LOGandDROP -m limit --limit 2/min -j LOG --log-prefix "IPTables-Dropped: " --log-level 4
-iptables -A LOGandDROP -j DROP
-
-#Set default chain behaviour
-
-iptables -P INPUT DROP
-iptables -P FORWARD DROP
-iptables -P OUTPUT ACCEPT
+iptables -A INPUT -j LOGnDROP
+iptables -A LOGnDROP -m limit --limit 2/minute -j LOG --log-prefix "IPTables-Dropped: " --log-level 4
+iptables -A LOGnDROP -j DROP
  
 #Save settings
 
