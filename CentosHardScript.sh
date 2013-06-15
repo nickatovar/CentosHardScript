@@ -360,7 +360,7 @@ chkconfig rsyslog on
 
 mv /etc/rsyslog.conf /etc/rsyslog.conf.orig
 
-echo "'$ActionFileDefaultTemplate' RSYSLOG TraditionalFileFormat
+echo "\$ActionFileDefaultTemplate RSYSLOG TraditionalFileFormat
 
 auth,user.* /var/log/auth.log
 kern.*   /var/log/kern.log
@@ -796,8 +796,8 @@ smtpd_recipient_limit = 100
 
 #Configure Trusted Networks and Hosts
 mynetworks = 127.0.0.1/8
-myorigin = $mydomain  
-mydestination = $myhostname localhost.$mydomain localhost $mydomain
+myorigin = \$mydomain
+mydestination = \$myhostname localhost.\$mydomain localhost \$mydomain
 relay_domains = 
 fallback_relay =" > /etc/postfix/main.cf
 
@@ -844,6 +844,9 @@ echo "aureport --key --summary" >> /etc/cron.daily/aureport.cron
 echo "rpm -qVa" > /etc/cron.daily/rpm.cron
 
 #####FIREWALL#####
+#Vars *Change This*
+ NET=venet0
+ SSH=22
 
 #Flush all current rules from iptables
 
@@ -855,9 +858,9 @@ echo "rpm -qVa" > /etc/cron.daily/rpm.cron
  
 #Set default chain behaviour
 
-iptables -P INPUT DROP
-iptables -P FORWARD DROP
-iptables -P OUTPUT ACCEPT
+ iptables -P INPUT DROP
+ iptables -P FORWARD DROP
+ iptables -P OUTPUT ACCEPT
  
 #Create a LOG chain
 
@@ -873,45 +876,44 @@ iptables -P OUTPUT ACCEPT
 
 #Allow SSH connections. This is essential when working on remote
 #servers via SSH to prevent locking yourself out of the system
-#*Change This* to your established ssh port
 
- iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+ iptables -A INPUT -p tcp --dport $SSH -j ACCEPT
   
 #ICMP rules
-
+ 
  iptables -A INPUT -p icmp --icmp-type echo-reply -j ACCEPT
- iptables -A INPUT -p icmp --icmp-type destination-unreachable -j ACCEPT
- iptables -A INPUT -p icmp --icmp-type time-exceeded -j ACCEPT
+ iptables -A INPUT -i $NET -m limit --limit 3/second --limit-burst 8 -p icmp --icmp-type echo-request -j ACCEPT
+ iptables -A INPUT -i $NET -p icmp --icmp-type destination-unreachable -j ACCEPT
+ iptables -A INPUT -i $NET -p icmp --icmp-type time-exceeded -j ACCEPT
 
 #Log and then drop martians
-#*Change This* - Make sure to change the interface for what your server uses.
  
- iptables -A INPUT -i venet0 -s 0.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i venet0 -s 10.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i venet0 -s 127.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i venet0 -s 169.254.0.0/16 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i venet0 -s 172.16.0.0/12 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i venet0 -s 192.0.0.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i venet0 -s 192.0.2.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i venet0 -s 192.168.0.0/16 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i venet0 -s 198.18.0.0/15 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i venet0 -s 198.51.100.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i venet0 -s 203.0.113.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i venet0 -s 240.0.0.0/4 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i venet0 -s 255.255.255.255/32 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i venet0 -s 224.0.0.0/4 -j LOG --log-prefix "IP DROP MULTICAST:"
+ iptables -A INPUT -i $NET -s 0.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i $NET -s 10.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i $NET -s 127.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i $NET -s 169.254.0.0/16 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i $NET -s 172.16.0.0/12 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i $NET -s 192.0.0.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i $NET -s 192.0.2.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i $NET -s 192.168.0.0/16 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i $NET -s 198.18.0.0/15 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i $NET -s 198.51.100.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i $NET -s 203.0.113.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i $NET -s 240.0.0.0/4 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i $NET -s 255.255.255.255/32 -j LOG --log-prefix "IP DROP SPOOF:"
+ iptables -A INPUT -i $NET -s 224.0.0.0/4 -j LOG --log-prefix "IP DROP MULTICAST:"
 
  
 #SYN flood protection.
 
- iptables -A INPUT -p tcp --syn -m limit --limit 1/second -limit-burst 4 -j ACCEPT
+ iptables -A INPUT -p tcp --syn -m limit --limit 1/second --limit-burst 4 -j ACCEPT
  iptables -A INPUT -p tcp --syn -j DROP
  
 #Log then drop the packets when finished
 
-iptables -A INPUT -j LOGnDROP
-iptables -A LOGnDROP -m limit --limit 2/minute -j LOG --log-prefix "IPTables-Dropped: " --log-level 4
-iptables -A LOGnDROP -j DROP
+ iptables -A INPUT -j LOGnDROP
+ iptables -A LOGnDROP -m limit --limit 2/minute -j LOG --log-prefix "IPTables-Dropped: " --log-level 4
+ iptables -A LOGnDROP -j DROP
  
 #Save settings
 
