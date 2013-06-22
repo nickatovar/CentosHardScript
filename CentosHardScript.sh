@@ -355,27 +355,9 @@ yum -y upgrade
 #####Install-Logging/Audit/Security#####
 
 ##Rsyslog##
-yum -y install rsyslog
-chkconfig rsyslog on
-
-mv /etc/rsyslog.conf /etc/rsyslog.conf.orig
-
-echo "\$ActionFileDefaultTemplate RSYSLOG TraditionalFileFormat
-
-auth,user.* /var/log/auth.log
-kern.*   /var/log/kern.log
-daemon.* /var/log/daemon.log
-syslog.* /var/log/sys.log
-mail.*   /var/log/mail.log
-*.err    /var/log/err.log
-lpr,news,uucp,local0,local1,local2,local3,local4,local5,local6.* /var/log/unused.log
-" > /etc/rsyslog.conf
-
-chown root:root /etc/rsyslog.conf
-chmod 640 /etc/rsyslog.conf
 
 #Remove default logs
-rm -fR /var/log/*
+rm -fR /var/log/
 
 #Make sure all rsyslogs are created and secure
 touch /var/log/auth.log
@@ -402,44 +384,85 @@ touch /var/log/err.log
 chown root:root /var/log/err.log
 chmod og-rwx /var/log/err.log
 
+touch /var/log/misc.log
+chown root:root /var/log/misc.log
+chmod og-rwx /var/log/misc.log
+
+yum -y install rsyslog
+
+mv /etc/rsyslog.conf /etc/rsyslog.conf.orig
+
+echo "\$ActionFileDefaultTemplate RSYSLOG_TraditionalFileFormat
+
+auth,user.* /var/log/auth.log
+kern.*   /var/log/kern.log
+daemon.* /var/log/daemon.log
+syslog.* /var/log/sys.log
+mail.*   /var/log/mail.log
+*.err    /var/log/err.log
+lpr,news,uucp,local0,local1,local2,local3,local4,local5,local6.* /var/log/misc.log
+" > /etc/rsyslog.conf
+
+chown root:root /etc/rsyslog.conf
+chmod 640 /etc/rsyslog.conf
+
+chkconfig rsyslog on
 
 #Restart rsyslog
 /etc/init.d/rsyslog restart
 
 #Logwatch (used to summarize rsyslog)
 yum -y  install logwatch
-chkconfig logwatch on
 
 mv /etc/logwatch/conf/logwatch.conf /etc/logwatch/conf/logwatch.conf.orig
 
 echo "
-#
-# This file controls the configuration of the logwatch daemon
-#
+# Logwatch Configuration File
 
+# Default Log Directory
 LogDir = /var/log
+
+# You can override the default temp directory (/tmp) here
 TmpDir = /var/cache/logwatch
 
+# Default person to mail reports to.
 #*Change This*
-MailTo = test@example.com
+MailTo = user@example.com
+
+# Default person to mail reports from.
 MailFrom = Logwatch
-mailer = 'sendmail -t'
+
+#Send to stdout instead of being mailed to above person.
 Print = No
 
-Archives = Yes
-Range = yesterday
-Detail = Med
+# Use archives? 
+#Archives = No (Default:yes)
+#Range = All
 
-Service = '-zz-disk_space'
+# The time range for the reports (All, Today, Yesterday)
+Range = All
 
-DailyReport = Yes
-HostLimit = no
-SplitHosts = yes
-MultiEmail = no" >> /etc/logwatch/conf/logwatch.conf
+# Detail level for the report (Low, Med, High)
+Detail = High 
+
+#This should be left as All for most people.  
+Service = All
+
+# The below services are disabled, comment them if you would like to use them
+Service = \"-zz-network\"     # Prevents execution of zz-network service, which
+                            # prints useful network configuration info.
+Service = \"-zz-sys\"         # Prevents execution of zz-sys service, which
+                            # prints useful system configuration info.
+Service = \"-eximstats\"      # Prevents execution of eximstats service, which
+                            # is a wrapper for the eximstats program.
+
+# Mail Command
+mailer = \"sendmail -t\"" >> /etc/logwatch/conf/logwatch.conf
+
+chkconfig logwatch on
 
 ##Auditd##
 yum -y install audit
-chkconfig auditd on
 
 #Auditd Config
 
@@ -453,30 +476,32 @@ echo "
 log_file = /var/log/auditd.log
 log_format = RAW
 log_group = root
-
 max_log_file = 10 
 max_log_file_action = keep_logs
-
-admin_space_left = 50
-space_left = 75
-disk_full_action = SUSPEND
-disk_error_action = SUSPEND
-
-space_left_action = email
-action_mail_acct = root
-admin_space_left_action = halt
-
 priority_boost = 4
 flush = INCREMENTAL
 freq = 20
-
 num_logs = 5
 disp_qos = lossy
 dispatcher = /sbin/audispd
-name_format = NONE" > /etc/audit/auditd.conf
+name_format = hostname
+
+admin_space_left = 50
+space_left = 75
+space_left_action = email
+admin_space_left_action = email
+action_mail_acct = root
+disk_full_action = syslog
+disk_error_action = syslog
+
+use_libwrap = yes
+
+" > /etc/audit/auditd.conf
 
 chown root:root /etc/audit/auditd.conf
 chmod 640 /etc/audit/auditd.conf
+
+chkconfig auditd on
 
 #Auditd rules
 
@@ -578,14 +603,8 @@ chmod 640 /etc/audit/audit.rules
 #Restart auditd
 /etc/init.d/auditd restart
 
-#Aureport (used to summarize auditd)
-#This may come pre-installed
-yum -y install aureport
-chkconfig aureport on
-
 ##AIDE##
 yum -y install aide
-chkconfig aide on
 
 mv /etc/aide.conf /etc/aide.conf.orig
 
@@ -593,24 +612,21 @@ echo "
 # AIDE configuration file.
 
 @@define DBDIR /var/lib/aide
-@@define LOGDIR /var/log/
+@@define LOGDIR /var/log
 
 # The location of the database to be read.
 database=file:@@{DBDIR}/aide.db.gz
 
 # The location of the database to be written.
-#database_out=sql:host:port:database:login_name:passwd:table
-#database_out=file:aide.db.new
 database_out=file:@@{DBDIR}/aide.db.new.gz
 
 # Whether to gzip the output to database
 gzip_dbout=yes
 
-# Default.
+# Logging
 verbose=5
 
 report_url=file:@@{LOGDIR}/aide.log
-report_url=stdout
 
 # These are the default rules.
 
@@ -753,6 +769,8 @@ DATAONLY =  p+n+u+g+s+acl+selinux+xattrs+md5+sha256+rmd160+tiger
 # Admins dot files constantly change, just check perms
 /root/\..* PERMS" > /etc/aide.conf
 
+chkconfig aide on
+
 ##TCP_Wrappers##
 
 yum -y install tcp_wrappers
@@ -767,10 +785,6 @@ echo "sshd:ALL" > /etc/hosts.allow
 chmod 644 /etc/hosts.allow
 chmod 644 /etc/hosts.deny
 
-#Make sure iptables is on
-chkconfig iptables on
-service iptables restart
-
 mv /etc/host.conf /etc/host.conf.orig
 echo "order bind,hosts
 multi on
@@ -779,6 +793,11 @@ nospoof on" > /etc/host.conf
 chmod 644 /etc/host.conf
 
 #####Postfix#####
+
+#Make sure postfix is installed and running
+yum install postfix
+chkconfig postfix on
+
 #Set to recieve internal mail only, but can send summaries externally
 #*Change This* if you need something different
 
@@ -800,6 +819,9 @@ myorigin = \$mydomain
 mydestination = \$myhostname localhost.\$mydomain localhost \$mydomain
 relay_domains = 
 fallback_relay =" > /etc/postfix/main.cf
+
+mkfifo /var/spool/postfix/public/pickup
+/etc/init.d/postfix restart
 
 #####CRON#####
 
@@ -832,18 +854,20 @@ echo "yum -R 10 -e 0 -d 0 -y upgrade" >> /etc/cron.monthly/yum.cron
 echo "aide --check" > /etc/cron.daily/aide.cron
 
 #Logwatch
-#This can be removed
 echo "/usr/share/logwatch/scripts/logwatch.pl 0logwatch" > /etc/cron.daily/logwatch.cron
 
 #Aureport
-#This can be removed
 echo "aureport --key --summary" >> /etc/cron.daily/aureport.cron
 
 #Verify-Packages
-
 echo "rpm -qVa" > /etc/cron.daily/rpm.cron
 
 #####FIREWALL#####
+
+#Make sure iptables is on
+chkconfig iptables on
+service iptables restart
+
 #Vars *Change This*
  NET=venet0
  SSH=22
@@ -862,10 +886,14 @@ echo "rpm -qVa" > /etc/cron.daily/rpm.cron
  iptables -P FORWARD DROP
  iptables -P OUTPUT ACCEPT
  
+#Create a new SYN flood protection chain
+
+ iptables -N SYN-Flood
+
 #Create a LOG chain
 
  iptables -N LOGnDROP
-  
+ 
 #Set access for localhost
 
  iptables -A INPUT -i lo -j ACCEPT
@@ -888,26 +916,25 @@ echo "rpm -qVa" > /etc/cron.daily/rpm.cron
 
 #Log and then drop martians
  
- iptables -A INPUT -i $NET -s 0.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i $NET -s 10.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i $NET -s 127.0.0.0/8 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i $NET -s 169.254.0.0/16 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i $NET -s 172.16.0.0/12 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i $NET -s 192.0.0.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i $NET -s 192.0.2.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i $NET -s 192.168.0.0/16 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i $NET -s 198.18.0.0/15 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i $NET -s 198.51.100.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i $NET -s 203.0.113.0/24 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i $NET -s 240.0.0.0/4 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i $NET -s 255.255.255.255/32 -j LOG --log-prefix "IP DROP SPOOF:"
- iptables -A INPUT -i $NET -s 224.0.0.0/4 -j LOG --log-prefix "IP DROP MULTICAST:"
+ iptables -A INPUT -i $NET -s 0.0.0.0/8 -j LOGnDROP
+ iptables -A INPUT -i $NET -s 10.0.0.0/8 -j LOGnDROP
+ iptables -A INPUT -i $NET -s 127.0.0.0/8 -j LOGnDROP
+ iptables -A INPUT -i $NET -s 169.254.0.0/16 -j LOGnDROP
+ iptables -A INPUT -i $NET -s 172.16.0.0/12 -j LOGnDROP
+ iptables -A INPUT -i $NET -s 192.0.0.0/24 -j LOGnDROP
+ iptables -A INPUT -i $NET -s 192.0.2.0/24 -j LOGnDROP
+ iptables -A INPUT -i $NET -s 192.168.0.0/16 -j LOGnDROP
+ iptables -A INPUT -i $NET -s 198.18.0.0/15 -j LOGnDROP
+ iptables -A INPUT -i $NET -s 198.51.100.0/24 -j LOGnDROP
+ iptables -A INPUT -i $NET -s 203.0.113.0/24 -j LOGnDROP
+ iptables -A INPUT -i $NET -s 240.0.0.0/4 -j LOGnDROP
+ iptables -A INPUT -i $NET -s 255.255.255.255/32 -j LOGnDROP
+ iptables -A INPUT -i $NET -s 224.0.0.0/4 -j LOGnDROP
 
+#SYN flood protection
  
-#SYN flood protection.
-
- iptables -A INPUT -p tcp --syn -m limit --limit 1/second --limit-burst 4 -j ACCEPT
- iptables -A INPUT -p tcp --syn -j DROP
+ iptables -A SYN-Flood -m limit --limit 10/second --limit-burst 50 -j RETURN
+ iptables -A SYN-Flood -j LOGnDROP
  
 #Log then drop the packets when finished
 
