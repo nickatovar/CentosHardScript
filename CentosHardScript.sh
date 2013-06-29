@@ -57,6 +57,7 @@ authconfig --passalgo=sha512 --update
 
 #Change the default mask for all created daemons
 echo umask 027 >> /etc/sysconfig/init
+echo umask 027 >> /etc/profile
 
 #Add profile timeouts to reap idle users
 echo "#Idle users will be removed after 15 minutes" >> /etc/profile.d/os-security.sh
@@ -65,6 +66,9 @@ echo "readonly HISTFILE" >> /etc/profile.d/os-security.sh
 chmod +x /etc/profile.d/os-security.sh
 chown root:root /etc/profile.d/os-security.sh
 chmod 700 /etc/profile.d/os-security.sh
+
+#Update locate Database
+updatedb
 
 ####Login-Security####
 
@@ -220,7 +224,8 @@ net.ipv4.conf.all.send_redirects = 0
 net.ipv4.conf.default.send_redirects = 0
 net.ipv4.conf.all.secure_redirects = 0
 net.ipv4.conf.default.secure_redirects = 0
-#Ignore all ICMP echo and timestamp requests sent to it via broadcast/multicast 
+#Ignore all ICMP echo and timestamp requests sent to it via broadcast/multicast
+net.ipv4.tcp_timestamps = 0
 net.ipv4.icmp_echo_ignore_broadcasts = 1
 #Enable source validation by reversed path, as specified in RFC1812
 net.ipv4.conf.all.rp_filter = 1
@@ -228,8 +233,8 @@ net.ipv4.conf.default.rp_filter = 1
 
 ##IPv6-networking-start##
 #Do not accept redirects
-net.ipv6.conf.all.accept_redirect = 0
-net.ipv6.conf.default.accept_redirect = 0
+net.ipv6.conf.all.accept_redirects = 0
+net.ipv6.conf.default.accept_redirects = 0
 #Do not send Router Solicitations
 net.ipv6.conf.default.router_solicitations = 0
 #Do not accept router advertisements
@@ -349,6 +354,7 @@ chmod 640 /etc/yum.conf
 
 #Check for updates and upgrade
 
+yum -y install yum-utils
 yum -y check-update
 yum -y upgrade
 
@@ -808,6 +814,7 @@ echo "inet_interfaces = localhost
 #Limit Denial of Service Attacks
 smtpd_client_connection_count_limit = 10
 smtpd_client_connection_rate_limit = 30
+smtpd_banner = \$myhostname ESMTP ""
 queue_minfree = 20971520
 header_size_limit = 51200
 message_size_limit = 10485760
