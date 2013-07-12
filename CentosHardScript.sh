@@ -10,9 +10,14 @@
 
 #This script will remove most standard installation packages
 #leaving only basic applications including SSH and Postfix that
-#have outside access. Make sure that if you are using ssh to 
-#log into your your server add a user, other than root,
-#and add them to an ssh capable group. 
+#have outside access.
+
+#Make sure that if you are using ssh to log into your your server
+#add a user, other than root, to an ssh capable group.
+
+#Lastly, I would reccomend you add a user to the sudoers file
+#and/or to the wheel group file since su will be disabled for
+#all except wheel users.
 
 #Please review the sources below to understand what this
 #script is actually doing.
@@ -102,6 +107,22 @@ session     required      pam_unix.so " > /etc/pam.d/system-auth
 
 chown root:root /etc/pam.d/system-auth
 chmod 600 /etc/pam.d/system-auth
+
+echo "#%PAM-1.0
+auth		sufficient	pam_rootok.so
+# Uncomment the following line to implicitly trust users in the wheel group.
+#auth		sufficient	pam_wheel.so trust use_uid
+# Uncomment the following line to require a user to be in the wheel group.
+auth		required	pam_wheel.so use_uid
+auth		include		system-auth
+account		sufficient	pam_succeed_if.so uid = 0 use_uid quiet
+account		include		system-auth
+password	include		system-auth
+session		include		system-auth
+session		optional	pam_xauth.so " > /etc/pam.d/su
+
+chown root:root /etc/pam.d/su
+chmod 600 /etc/pam.d/su
 
 #Modify SSH config
 
@@ -355,6 +376,7 @@ chmod 640 /etc/yum.conf
 #Check for updates and upgrade
 
 yum -y install yum-utils
+yum-complete-transaction
 yum -y check-update
 yum -y upgrade
 
@@ -876,7 +898,7 @@ chkconfig iptables on
 service iptables restart
 
 #Vars *Change This*
- NET=venet0
+ NET=eth0
  SSH=22
 
 #Flush all current rules from iptables
