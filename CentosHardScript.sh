@@ -72,9 +72,6 @@ chmod +x /etc/profile.d/os-security.sh
 chown root:root /etc/profile.d/os-security.sh
 chmod 700 /etc/profile.d/os-security.sh
 
-#Update locate Database
-updatedb
-
 ####Login-Security####
 
 #Modify the PAM config
@@ -123,6 +120,79 @@ session		optional	pam_xauth.so " > /etc/pam.d/su
 
 chown root:root /etc/pam.d/su
 chmod 600 /etc/pam.d/su
+
+#Modify the sudoers privaleges
+
+mv /etc/sudoers /etc/sudoers.orig
+touch /etc/sudoers
+
+echo "#Sudoers security
+## Sudoers allows particular users to run various commands as
+## the root user, without needing the root password.
+
+# Defaults specification
+
+#
+# Disable \"ssh hostname sudo <cmd>\", because it will show the password in clear. 
+#         You have to run \"ssh -t hostname sudo <cmd>\".
+#
+Defaults    requiretty
+
+#
+# Refuse to run if unable to disable echo on the tty. This setting should also be
+# changed in order to be able to use sudo without a tty. See requiretty above.
+#
+Defaults   !visiblepw
+
+#
+# Preserving HOME has security implications since many programs
+# use it when searching for configuration files. Note that HOME
+# is already set when the the env_reset option is enabled, so
+# this option is only effective for configurations where either
+# env_reset is disabled or HOME is present in the env_keep list.
+#
+Defaults    always_set_home
+
+Defaults    env_reset
+Defaults    env_keep =  \"COLORS DISPLAY HOSTNAME HISTSIZE INPUTRC KDEDIR LS_COLORS\"
+Defaults    env_keep += \"MAIL PS1 PS2 QTDIR USERNAME LANG LC_ADDRESS LC_CTYPE\"
+Defaults    env_keep += \"LC_COLLATE LC_IDENTIFICATION LC_MEASUREMENT LC_MESSAGES\"
+Defaults    env_keep += \"LC_MONETARY LC_NAME LC_NUMERIC LC_PAPER LC_TELEPHONE\"
+Defaults    env_keep += \"LC_TIME LC_ALL LANGUAGE LINGUAS _XKB_CHARSET XAUTHORITY\"
+
+#
+# Adding HOME to env_keep may enable a user to run unrestricted
+# commands via sudo.
+#
+# Defaults   env_keep += \"HOME\"
+
+Defaults    secure_path = /sbin:/bin:/usr/sbin:/usr/bin
+
+#Make sudo command only work if user knows root password
+Defaults    rootpw
+
+## Next comes the main part: which users can run what software on 
+## which machines (the sudoers file can be shared between multiple
+## systems).
+##*Change This* (You may want give certain users some sudo privilages
+## but not as much as a user in group 'wheel') Add users as shown below
+## Syntax:
+##
+## 	user	MACHINE=COMMANDS
+##
+## The COMMANDS section may have other options added to it.
+##
+## Allow root to run any commands anywhere 
+root	ALL=(ALL) 	ALL
+
+## Allows people in group wheel to run all commands
+%wheel	ALL=(ALL)	ALL
+
+## Read drop-in files from /etc/sudoers.d (the # here does not mean a comment)
+#includedir /etc/sudoers.d " > /etc/sudoers
+
+chown root:root /etc/sudoers
+chmod 440 /etc/sudoers
 
 #Modify SSH config
 
@@ -296,7 +366,6 @@ chkconfig atd off
 chkconfig yum-updatesd off
 chkconfig syslog off
 chkconfig cvs off
-
 chkconfig chargen-dgram off
 chkconfig chargen-stream off
 chkconfig daytime-dgram off
@@ -322,7 +391,6 @@ yum -y erase talk
 yum -y erase talk-server
 yum -y erase anacron
 yum -y erase cvs
-
 yum -y erase bind
 yum -y erase rsh
 yum -y erase rsh-server
@@ -898,12 +966,12 @@ chkconfig iptables on
 service iptables restart
 
 #Vars *Change This*
- NET=eth0
- SSH=22
+NET=eth0
+SSH=22
 
 #Flush all current rules from iptables
 
- iptables -F
+iptables -F
  
 #Save to make sure flush is not just temporary
 
@@ -911,77 +979,81 @@ service iptables restart
  
 #Set default chain behaviour
 
- iptables -P INPUT DROP
- iptables -P FORWARD DROP
- iptables -P OUTPUT ACCEPT
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT ACCEPT
  
 #Create a new SYN flood protection chain
 
- iptables -N SYN-Flood
+iptables -N SYN-Flood
 
 #Create a LOG chain
 
- iptables -N LOGnDROP
+iptables -N LOGnDROP
  
 #Set access for localhost
 
- iptables -A INPUT -i lo -j ACCEPT
+iptables -A INPUT -i lo -j ACCEPT
  
 #Accept packets belonging to established and related connections
 
- iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 
 #Allow SSH connections. This is essential when working on remote
 #servers via SSH to prevent locking yourself out of the system
 
- iptables -A INPUT -p tcp --dport $SSH -j ACCEPT
+iptables -A INPUT -p tcp --dport $SSH -j ACCEPT
   
 #ICMP rules
  
- iptables -A INPUT -p icmp --icmp-type echo-reply -j ACCEPT
- iptables -A INPUT -i $NET -m limit --limit 3/second --limit-burst 8 -p icmp --icmp-type echo-request -j ACCEPT
- iptables -A INPUT -i $NET -p icmp --icmp-type destination-unreachable -j ACCEPT
- iptables -A INPUT -i $NET -p icmp --icmp-type time-exceeded -j ACCEPT
+iptables -A INPUT -p icmp --icmp-type echo-reply -j ACCEPT
+iptables -A INPUT -i $NET -m limit --limit 3/second --limit-burst 8 -p icmp --icmp-type echo-request -j ACCEPT
+iptables -A INPUT -i $NET -p icmp --icmp-type destination-unreachable -j ACCEPT
+iptables -A INPUT -i $NET -p icmp --icmp-type time-exceeded -j ACCEPT
 
 #Log and then drop martians
  
- iptables -A INPUT -i $NET -s 0.0.0.0/8 -j LOGnDROP
- iptables -A INPUT -i $NET -s 10.0.0.0/8 -j LOGnDROP
- iptables -A INPUT -i $NET -s 127.0.0.0/8 -j LOGnDROP
- iptables -A INPUT -i $NET -s 169.254.0.0/16 -j LOGnDROP
- iptables -A INPUT -i $NET -s 172.16.0.0/12 -j LOGnDROP
- iptables -A INPUT -i $NET -s 192.0.0.0/24 -j LOGnDROP
- iptables -A INPUT -i $NET -s 192.0.2.0/24 -j LOGnDROP
- iptables -A INPUT -i $NET -s 192.168.0.0/16 -j LOGnDROP
- iptables -A INPUT -i $NET -s 198.18.0.0/15 -j LOGnDROP
- iptables -A INPUT -i $NET -s 198.51.100.0/24 -j LOGnDROP
- iptables -A INPUT -i $NET -s 203.0.113.0/24 -j LOGnDROP
- iptables -A INPUT -i $NET -s 240.0.0.0/4 -j LOGnDROP
- iptables -A INPUT -i $NET -s 255.255.255.255/32 -j LOGnDROP
- iptables -A INPUT -i $NET -s 224.0.0.0/4 -j LOGnDROP
+iptables -A INPUT -i $NET -s 0.0.0.0/8 -j LOGnDROP
+iptables -A INPUT -i $NET -s 10.0.0.0/8 -j LOGnDROP
+iptables -A INPUT -i $NET -s 127.0.0.0/8 -j LOGnDROP
+iptables -A INPUT -i $NET -s 169.254.0.0/16 -j LOGnDROP
+iptables -A INPUT -i $NET -s 172.16.0.0/12 -j LOGnDROP
+iptables -A INPUT -i $NET -s 192.0.0.0/24 -j LOGnDROP
+iptables -A INPUT -i $NET -s 192.0.2.0/24 -j LOGnDROP
+iptables -A INPUT -i $NET -s 192.168.0.0/16 -j LOGnDROP
+iptables -A INPUT -i $NET -s 198.18.0.0/15 -j LOGnDROP
+iptables -A INPUT -i $NET -s 198.51.100.0/24 -j LOGnDROP
+iptables -A INPUT -i $NET -s 203.0.113.0/24 -j LOGnDROP
+iptables -A INPUT -i $NET -s 240.0.0.0/4 -j LOGnDROP
+iptables -A INPUT -i $NET -s 255.255.255.255/32 -j LOGnDROP
+iptables -A INPUT -i $NET -s 224.0.0.0/4 -j LOGnDROP
 
 #SYN flood protection
  
- iptables -A SYN-Flood -m limit --limit 10/second --limit-burst 50 -j RETURN
- iptables -A SYN-Flood -j LOGnDROP
+iptables -A SYN-Flood -m limit --limit 10/second --limit-burst 50 -j RETURN
+iptables -A SYN-Flood -j LOGnDROP
  
 #Log then drop the packets when finished
 
- iptables -A INPUT -j LOGnDROP
- iptables -A LOGnDROP -m limit --limit 2/minute -j LOG --log-prefix "IPTables-Dropped: " --log-level 4
- iptables -A LOGnDROP -j DROP
+iptables -A INPUT -j LOGnDROP
+iptables -A LOGnDROP -m limit --limit 2/minute -j LOG --log-prefix "IPTables-Dropped: " --log-level 4
+iptables -A LOGnDROP -j DROP
  
 #Save settings
 
- /sbin/service iptables save
+/sbin/service iptables save
 
 #List rules
 
- iptables -L -v
+iptables -L -v
+ 
+#Update locate Database
+updatedb
  
 ##AIDE Database##
 #After everything is finished
 #generate a new database#
+ 
 aide --init
 mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
 aide --check
