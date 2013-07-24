@@ -525,21 +525,21 @@ constant(value=\"\n\")
 
 #### Local Rules ####
 
-auth,authpriv,user.* Action (type=\Óomfile\Ó DirCreateMode=\"0700\" FileCreateMode=\"0600\"
-                             FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/auth.log\Ó)
-kern.*      Action (type=\Óomfile\Ó DirCreateMode=\"0700\" FileCreateMode=\"0600\"
-                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/kern.log\Ó)
-daemon.*    Action (type=\Óomfile\Ó DirCreateMode=\"0700\" FileCreateMode=\"0600\"
-                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/daemon.log\Ó)
-syslog.*    Action (type=ÓomfileÓ DirCreateMode=\"0700\" FileCreateMode=\"0600\"
-                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/sys.log\Ó)
-mail.*      Action (type=ÓomfileÓ DirCreateMode=\"0700\" FileCreateMode=\"0600\"
-                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/mail.log\Ó)
-*.err       Action (type=ÓomfileÓ DirCreateMode=\"0700\" FileCreateMode=\"0600\"
-                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/err.log\Ó)
+auth,authpriv,user.* Action (type=\"omfile\" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                             FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\"/var/log/auth.log\")
+kern.*      Action (type=\"omfile\" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\"/var/log/kern.log\")
+daemon.*    Action (type=\"omfile\" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\"/var/log/daemon.log\")
+syslog.*    Action (type="omfile" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\"/var/log/sys.log\")
+mail.*      Action (type="omfile" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\"/var/log/mail.log\")
+*.err       Action (type="omfile" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\"/var/log/err.log\")
                     
-lpr,news,uucp,local0,local1,local2,local3,local4,local5,local6.*  Action (type=\Óomfile\Ó DirCreateMode=\"0700\" FileCreateMode=\"0600\"
-                                                                          FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/misc.log\Ó)
+lpr,news,uucp,local0,local1,local2,local3,local4,local5,local6.*  Action (type=\"omfile\" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                                                                          FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\"/var/log/misc.log\")
 " > /etc/rsyslog.conf
 
 chown root:root /etc/rsyslog.conf
