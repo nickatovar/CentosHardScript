@@ -31,6 +31,7 @@
 ####Set-Core-Permissions#####
 
 #Secure the Terminal by removing all non-essential consoles
+
 mv /etc/securetty /etc/securetty.orig
 echo "tty1" > /etc/securetty 
 
@@ -61,10 +62,12 @@ chmod 4710 /usr/sbin/userhelper
 authconfig --passalgo=sha512 --update
 
 #Change the default mask for all created daemons
+
 echo umask 027 >> /etc/sysconfig/init
 echo umask 027 >> /etc/profile
 
 #Add profile timeouts to reap idle users
+
 echo "#Idle users will be removed after 15 minutes" >> /etc/profile.d/os-security.sh
 echo "readonly TMOUT=900" >> /etc/profile.d/os-security.sh
 echo "readonly HISTFILE" >> /etc/profile.d/os-security.sh 
