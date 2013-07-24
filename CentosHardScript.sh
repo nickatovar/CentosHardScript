@@ -2,7 +2,7 @@
 
 #This script is meant to take basic steps in hardening your
 #Centos6.X environment remember however that no system is
-#inpenetratable and watching your logs is the best defense
+#impenetrable and watching your logs is the best defense
 #against intruders and malicious activity.
 
 #Look for "*Change This*" throughout this script for specific
@@ -15,7 +15,7 @@
 #Make sure that if you are using ssh to log into your your server
 #add a user, other than root, to an ssh capable group.
 
-#Lastly, I would reccomend you add a user to the sudoers file
+#Lastly, I would recommend you add a user to the sudoers file
 #and/or to the wheel group file since su will be disabled for
 #all except wheel users.
 
@@ -124,7 +124,7 @@ session		optional	pam_xauth.so " > /etc/pam.d/su
 chown root:root /etc/pam.d/su
 chmod 600 /etc/pam.d/su
 
-#Modify the sudoers privaleges
+#Modify the sudoers privileges
 
 mv /etc/sudoers /etc/sudoers.orig
 touch /etc/sudoers
@@ -180,7 +180,7 @@ Defaults logfile=/var/log/sudo.log
 ## Next comes the main part: which users can run what software on 
 ## which machines (the sudoers file can be shared between multiple
 ## systems).
-##*Change This* (You may want give certain users some sudo privilages
+##*Change This* (You may want give certain users some sudo privileges
 ## but not as much as a user in group 'wheel') Add users as shown below
 ## Syntax:
 ##
@@ -937,7 +937,7 @@ chmod 644 /etc/host.conf
 yum install postfix
 chkconfig postfix on
 
-#Set to recieve internal mail only, but can send summaries externally
+#Set to receive internal mail only, but can send summaries externally
 #*Change This* if you need something different
 
 mv /etc/postfix/main.cf /etc/postfix/main.cf.orig
@@ -1020,7 +1020,7 @@ iptables -F
 
  /sbin/service iptables save
  
-#Set default chain behaviour
+#Set default chain behavior
 
 iptables -P INPUT DROP
 iptables -P FORWARD DROP
