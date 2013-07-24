@@ -531,11 +531,11 @@ kern.*      Action (type=\"omfile\" DirCreateMode=\"0700\" FileCreateMode=\"0600
                     FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\"/var/log/kern.log\")
 daemon.*    Action (type=\"omfile\" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
                     FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\"/var/log/daemon.log\")
-syslog.*    Action (type="omfile" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+syslog.*    Action (type=\"omfile\" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
                     FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\"/var/log/sys.log\")
-mail.*      Action (type="omfile" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+mail.*      Action (type=\"omfile\" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
                     FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\"/var/log/mail.log\")
-*.err       Action (type="omfile" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+*.err       Action (type=\"omfile\" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
                     FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\"/var/log/err.log\")
                     
 lpr,news,uucp,local0,local1,local2,local3,local4,local5,local6.*  Action (type=\"omfile\" DirCreateMode=\"0700\" FileCreateMode=\"0600\"
