@@ -171,6 +171,9 @@ Defaults    secure_path = /sbin:/bin:/usr/sbin:/usr/bin
 #Make sudo command only work if user knows root password
 Defaults    rootpw
 
+#Log sudo usage to a file
+Defaults logfile=/var/log/sudo.log
+
 ## Next comes the main part: which users can run what software on 
 ## which machines (the sudoers file can be shared between multiple
 ## systems).
@@ -406,6 +409,7 @@ yum -y erase vsftpd
 yum -y erase dovecot
 yum -y erase samba
 yum -y erase squid
+yum -y erase syslog
 yum -y erase sendmail
 yum -y erase net-snmp
 yum -y groupremove "X Window System"
@@ -453,50 +457,86 @@ yum -y upgrade
 ##Rsyslog##
 
 #Remove default logs
-rm -fR /var/log/
+rm -fR /var/log/*
 
-#Make sure all rsyslogs are created and secure
-touch /var/log/auth.log
-chown root:root /var/log/auth.log
-chmod og-rwx /var/log/auth.log
-
-touch /var/log/kern.log
-chown root:root /var/log/kern.log
-chmod og-rwx /var/log/kern.log
-
-touch /var/log/daemon.log
-chown root:root /var/log/daemon.log
-chmod og-rwx /var/log/daemon.log
-
-touch /var/log/sys.log
-chown root:root /var/log/sys.log
-chmod og-rwx /var/log/sys.log
-
-touch /var/log/mail.log
-chown root:root /var/log/mail.log
-chmod og-rwx /var/log/mail.log
-
-touch /var/log/err.log
-chown root:root /var/log/err.log
-chmod og-rwx /var/log/err.log
-
-touch /var/log/misc.log
-chown root:root /var/log/misc.log
-chmod og-rwx /var/log/misc.log
+#Download the newest stable rsyslog repo
+#Many improvements have been made since v5.8 so I would suggest using v7
+#but if you would rather stick with the Centos/RHEL verified version comment out the repo
+echo "[rsyslog_v7]
+name=Adiscon CentOS-\$releasever - local packages for \$basearch
+baseurl=http://rpms.adiscon.com/v7-stable/epel-\$releasever/\$basearch
+enabled=1
+gpgcheck=0
+gpgkey=http://rpms.adiscon.com/RPM-GPG-KEY-Adiscon
+protect=1" > /etc/yum.repos.d/rsyslog.repo
 
 yum -y install rsyslog
 
 mv /etc/rsyslog.conf /etc/rsyslog.conf.orig
 
-echo "\$ActionFileDefaultTemplate RSYSLOG_TraditionalFileFormat
+echo "#Rsyslog configuration file
 
-auth,user.* /var/log/auth.log
-kern.*   /var/log/kern.log
-daemon.* /var/log/daemon.log
-syslog.* /var/log/sys.log
-mail.*   /var/log/mail.log
-*.err    /var/log/err.log
-lpr,news,uucp,local0,local1,local2,local3,local4,local5,local6.* /var/log/misc.log
+#For more information see /usr/share/doc/rsyslog-*/rsyslog_conf.html
+#If you experience problems, see http://www.rsyslog.com/doc/troubleshoot.html
+
+#### MODULES ####
+
+module(load=\"imuxsock\") # provides support for local system logging (e.g. via logger command)
+module(load=\"imklog\")   # provides kernel logging support (previously done by rklogd)
+#module(load\"immark\")  # provides --MARK-- message capability
+
+#Provides UDP syslog reception
+#for parameters see http://www.rsyslog.com/doc/imudp.html
+#module(load=\"imudp\") # needs to be done just once
+#input(type=\"imudp\" port=\"514\")
+
+#Provides TCP syslog reception
+#for parameters see http://www.rsyslog.com/doc/imtcp.html
+#module(load=\"imtcp\") # needs to be done just once
+#input(type=\"imtcp\" port=\"514\")
+
+
+#### Global Directives ####
+
+#Use default timestamp format
+$ActionFileDefaultTemplate RSYSLOG_TraditionalFileFormat
+
+# Include all config files in /etc/rsyslog.d/
+$IncludeConfig /etc/rsyslog.d/*.conf
+
+#### Custom Templates #####
+
+#Syslog template (reccomended format)
+template(name=\"LogFormat\" type=\"list\") {
+property(name=\"timestamp\" dateFormat=\"rfc3339\")
+constant(value=\":\")
+property(name=\"source\")
+constant(value=\":\")
+property(name=\"syslogfacility-text\")
+constant(value=\".\")
+property(name=\"syslogseverity-text\")
+constant(value=\" - \")
+property(name=\"msg\")
+constant(value=\"\n\")
+}
+
+#### Local Rules ####
+
+auth,authpriv,user.* Action (type=\Óomfile\Ó DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                             FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/auth.log\Ó)
+kern.*      Action (type=\Óomfile\Ó DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/kern.log\Ó)
+daemon.*    Action (type=\Óomfile\Ó DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/daemon.log\Ó)
+syslog.*    Action (type=ÓomfileÓ DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/sys.log\Ó)
+mail.*      Action (type=ÓomfileÓ DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/mail.log\Ó)
+*.err       Action (type=ÓomfileÓ DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                    FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/err.log\Ó)
+                    
+lpr,news,uucp,local0,local1,local2,local3,local4,local5,local6.*  Action (type=\Óomfile\Ó DirCreateMode=\"0700\" FileCreateMode=\"0600\"
+                                                                          FileOwner=\"root\" FileGroup=\"root\" template=\"LogFormat\" file=\Ó/var/log/misc.log\Ó)
 " > /etc/rsyslog.conf
 
 chown root:root /etc/rsyslog.conf
